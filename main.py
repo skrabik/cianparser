@@ -1,63 +1,99 @@
 import sqlalchemy
-from sqlalchemy import table, column, insert, select
+from sqlalchemy import insert, select
 
+from telegram_api.message import *
+from telegram_api.allowed_chats import *
 import cianparser
-from db_config import *
+from models import flat, usable_metro, usable_districts
+from config import *
 
-flat = table("flat",
-        column("id"),
-        column("cian_id"),
-        column("url"),
-        column("total_meters"),
-        column("price"),
-        column("commissions"),
-        column("district"),
-        column("underground"),
-        column("author_type"),
-)
-
-usable_metro = table("usable_metro",
-        column('metro_id'),
-         column('metro_name')
-)
-
-usable_districts = table("usable_districts",
-        column('district_id'),
-         column('district_name')
-)
-
-engine = sqlalchemy.create_engine("postgresql://"+DB_HOST+":"+DB_PORT+"/"+DB_NAME+"?password="+DB_PASSWORD+"&user="+DB_USER)
+connection_string = "postgresql://"+DB_HOST+":"+DB_PORT+"/"+DB_NAME+"?password="+DB_PASSWORD+"&user="+DB_USER
+engine = sqlalchemy.create_engine(connection_string,
+                                      pool_size=10,
+                                      max_overflow=2,
+                                      pool_recycle=300,
+                                      pool_pre_ping=True,
+                                      pool_use_lifo=True)
 
 with engine.connect() as conn:
+    stmt = select(flat.c.cian_id)
+    parsed_flats = {el[0] for el in conn.execute(stmt)}
+
     stmt = select(usable_metro)
     metro_list = [el[1] for el in conn.execute(stmt)]
 
-with engine.connect() as conn:
     stmt = select(usable_districts)
     districts_list = [el[1] for el in conn.execute(stmt)]
 
+
+max_price = 65000
 parser = cianparser.CianParser(location="Москва")
+
+
+def insert_stmt (el):
+    return insert(flat).values(
+        cian_id=el['url'].split('/')[-2],
+        url=el['url'],
+        total_meters=el['total_meters'],
+        price=el['price_per_month'],
+        commissions=el['commissions'],
+        district=el['district'],
+        underground=el['underground'],
+        author_type=el['author_type']
+    )
+
+def build_message (el):
+    res = ''
+    res += "Цена за месяц: " + str(el['price_per_month']) + "\n"
+    res += "Площадь: " + str(el['total_meters']) + "\n"
+    res += "Район: " + str(el['district']) + "\n"
+    res += "Метро: " + str(el['underground'])  + "\n"
+    res += el['url']
+    return res
+
 
 for station in metro_list:
     additional_settings = {
-        "max_price": 65000,
-        # 'metro': 'Московский',
-        # "metro_station": station,
-        'district': 103,
+        "max_price": max_price,
+        'metro': 'Московский',
+        "metro_station": station,
         "start_page": 1,
-        "end_page": 5
+        "end_page": 1
     }
     data = parser.get_flats(deal_type="rent_long", rooms=(1, 2), with_saving_csv=False, additional_settings=additional_settings)
     with engine.connect() as conn:
         for el in data:
-            stmt = insert(flat).values(
-                cian_id=el['url'].split('/')[-2],
-                url=el['url'],
-                total_meters=el['total_meters'],
-                price=el['price_per_month'],
-                commissions=el['commissions'],
-                district=el['district'],
-                underground=el['underground']
-            )
-            conn.execute(stmt)
-            conn.commit()
+            cian_id = el['url'].split('/')[-2]
+            if cian_id not in parsed_flats:
+                conn.execute(insert_stmt(el))
+                conn.commit()
+                for user_id in allowed_chats:
+                    message = build_message(el)
+                    StaticMethods.sendText(BOT_TOKEN, user_id, message)
+
+
+
+# for district in districts_list:
+#     additional_settings = {
+#         "max_price": max_price,
+#         'city': 'Москва',
+#         'district': district,
+#         "start_page": 1,
+#         "end_page": 5
+#     }
+#     data = parser.get_flats(deal_type="rent_long", rooms=(1, 2), with_saving_csv=False, additional_settings=additional_settings)
+#     with engine.connect() as conn:
+#         for el in data:
+#             cian_id = el['url'].split('/')[-2]
+#             if cian_id not in parsed_flats:
+#                 try:
+#                     conn.execute(insert_stmt(el))
+#                     conn.commit()
+#                     for user_id in allowed_chats:
+#                         message = build_message(el)
+#                         StaticMethods.sendText(BOT_TOKEN, user_id, message)
+#                 except Exception as e:
+#                     print(e)
+
+
+

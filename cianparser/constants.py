@@ -41,6 +41,8 @@ HOUSE_MATERIAL_TYPE_PATH = "&house_material%5B0%5D={}"
 METRO_FOOT_MINUTE_PATH = "&only_foot=2&foot_min={}"
 METRO_ID_PATH = "&metro%5B0%5D={}"
 
+DISTRICT_PATH = "&district[0]={}"
+
 FLAT_SHARE_PATH = "&flat_share={}"
 ONLY_FLAT_PATH = "&only_flat={}"
 APARTMENT_PATH = "&apartment={}"
@@ -755,4 +757,10 @@ METRO_STATIONS = {
         ['Буревестник', '335'],
         ['Стрелка', '360']
     ],
+}
+
+CITY_DISTRICTS = {
+    "Москва": [
+        ['Коньково', '103']
+    ]
 }

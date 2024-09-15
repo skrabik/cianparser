@@ -93,6 +93,13 @@ class URLBuilder:
                         if additional_settings["metro_station"] == metro_station:
                             self.url += METRO_ID_PATH.format(metro_id)
 
+        if "city" in additional_settings.keys():
+            if "district" in additional_settings.keys():
+                if additional_settings["city"] in CITY_DISTRICTS.keys():
+                    for district_name, district_id in CITY_DISTRICTS[additional_settings["city"]]:
+                        if additional_settings["district"] == district_name:
+                            self.url += DISTRICT_PATH.format(district_id)
+
         if "metro_foot_minute" in additional_settings.keys():
             self.url += METRO_FOOT_MINUTE_PATH.format(additional_settings["metro_foot_minute"])
 
