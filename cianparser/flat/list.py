@@ -27,8 +27,10 @@ class FlatListPageParser(BaseListPageParser):
         if len(header) == 0:
             return False, attempt_number + 1, False
 
+        for tag in list_soup.select("div[data-name='Suggestions']"): # для удаления похожих предложений
+            tag.decompose()
+
         offers = list_soup.select("article[data-name='CardComponent']")
-        print("")
         print(f"\r {page_number} page: {len(offers)} offers", end="\r", flush=True)
 
         if page_number == self.start_page and attempt_number == 0:

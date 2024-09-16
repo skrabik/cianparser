@@ -1,5 +1,7 @@
-from sys import getsizeof
+from math import log
 
-a = ['123412341234' for i in range(100_000_000)]
+delitel = (1923006 * 1e8)/24
 
-print(getsizeof(a) // (1024 * 1024))
+t = log(delitel) / 0.283539
+print(t)
+

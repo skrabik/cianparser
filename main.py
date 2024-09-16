@@ -6,6 +6,7 @@ from telegram_api.allowed_chats import *
 import cianparser
 from models import flat, usable_metro, usable_districts
 from config import *
+from helpers import *
 
 connection_string = "postgresql://"+DB_HOST+":"+DB_PORT+"/"+DB_NAME+"?password="+DB_PASSWORD+"&user="+DB_USER
 engine = sqlalchemy.create_engine(connection_string,
@@ -29,29 +30,6 @@ with engine.connect() as conn:
 max_price = 65000
 parser = cianparser.CianParser(location="Москва")
 
-
-def insert_stmt (el):
-    return insert(flat).values(
-        cian_id=el['url'].split('/')[-2],
-        url=el['url'],
-        total_meters=el['total_meters'],
-        price=el['price_per_month'],
-        commissions=el['commissions'],
-        district=el['district'],
-        underground=el['underground'],
-        author_type=el['author_type']
-    )
-
-def build_message (el):
-    res = ''
-    res += "Цена за месяц: " + str(el['price_per_month']) + "\n"
-    res += "Площадь: " + str(el['total_meters']) + "\n"
-    res += "Район: " + str(el['district']) + "\n"
-    res += "Метро: " + str(el['underground'])  + "\n"
-    res += el['url']
-    return res
-
-
 for station in metro_list:
     additional_settings = {
         "max_price": max_price,
@@ -65,6 +43,7 @@ for station in metro_list:
         for el in data:
             cian_id = el['url'].split('/')[-2]
             if cian_id not in parsed_flats:
+                parsed_flats.add(cian_id)
                 conn.execute(insert_stmt(el))
                 conn.commit()
                 for user_id in allowed_chats:
